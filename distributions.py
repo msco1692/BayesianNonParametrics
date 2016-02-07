@@ -4,7 +4,7 @@ class Distribution(object):
     def __init__(self, data):
         self.data = data
 
-    def validate_prior(self, prior):
+    def validate_prior(self):
         "Ensures that required parameters are given in dictionary format"
         print('Parameter validation code needs to go here.')
         pass
