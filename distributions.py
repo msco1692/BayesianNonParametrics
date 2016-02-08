@@ -29,12 +29,52 @@ class Distribution(object):
         print('Removing data code needs to go here.')
         pass   
 
+    def log_like(self):
+        "Returns log likelihood"
+        print('Log likelihood code needs to go here.')
+        pass
+
 class Gaussian(Distribution):
 
     def __init__(self, data, prior):
         super(Gaussian, self).__init__(data)
         self.prior = prior
-        self.validate_prior(prior)
+        if self.validate_prior(prior):
+            print('Prior is suitable.')
+        else:
+            print('Prior is not suitable.')
+
+    def validate_prior(self, prior):
+        "Ensures that a dictonary representing a Normal-Wishart prior has been passed."
+        if not isinstance(prior, dict):
+            print('Provided prior is not a dictionary.')
+            return False
+
+        key_list = prior.keys()
+        required_keys = ['d', 'r', 'v', 'm', 'S']
+
+        for k in required_keys:
+            if k not in key_list:
+                print('Prior parameter ', k, ' not provided.')
+                return False 
+
+        if prior['d'] != self.data.shape[1]:
+            print('Prior dimension does not match data.')
+            return False
+
+        if not isinstance(prior['r'], int):
+            print('Prior relative precision is not an integer.')
+            return False
+
+        if not isinstance(prior['v'], int):
+            print('Prior degrees of freedom is not an integer.')
+            return False    
+
+        if prior['S'].size != self.data.shape[1] ** 2: 
+            print('Prior precision does not match data shape.')
+            return False
+
+        return True
 
 def test(x, y):
     print('In test fn')
