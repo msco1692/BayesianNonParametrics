@@ -15,14 +15,32 @@ def CollapsedGibbsSampling(model, num_iterations):
 
 			# If the cluster is now empty delete it
 			if model.cluster_popn[cluster_id] == 0:
-
 				model.cluster_count -= 1
 				del model.cluster[cluster_id]
 				del model.cluster_popn[cluster_id]
 				tmp_idx = np.where(model.membership > cluster_id)
 				model.membership[tmp_idx] -= 1
 
-			# Generate list of conditional probabilities based on prior for membership
-			p = model.conditional_prob(data_point)
+			# Generate numpy array of relative probabilities based on prior for membership and current datapoints in each cluster
+			p = np.asarray(model.conditional_prob(data_point))
 
-			
+			# Check that p is normalised
+			p = p/sum(p)
+
+			# Generate cumulative probability mass function
+			p = cumsum(p)
+			rand_val = np.random.random()
+
+			# Select new cluster based on probabilities
+			new_cluster_id = np.sum(np.greater(rand_val, p))
+
+			# If a new cluster was chosen then create it. For convenience an empty cluster will always be at the end of the list. Thus we only have to create a copy of this cluster for future iterations, without storing the prior.
+			if new_cluster_id == model.cluster_count:
+				model.cluster_count += 1
+				model.cluster.append(model.cluster[-1].copy())
+				np.append(model.cluster_popn, 0)
+
+			# Add data point to its new cluster
+			model.membership[data_id] = new_cluster_id
+			model.cluster_popn[new_cluster_id] += 1
+			model.clusters[new_cluster_id].add_data(data_point)

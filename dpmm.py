@@ -17,6 +17,7 @@ class DPMM(object):
     	self.cluster_count = cluster_count
     	self.data_count = data_count
     	self.alpha = alpha
+    	# Clusters should include an empty cluster at the end of the list which is ignored in cluster_count
     	self.clusters = clusters
     	if data.shape[0] != data_count:
     		print "Provided data doesn't conform with claimed data count."
