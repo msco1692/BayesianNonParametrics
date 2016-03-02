@@ -1,3 +1,18 @@
+import numpy as np
+import scipy.special
+
+def chol_update(C, x):
+    "Updates Cholesky matrix factorisation as per https://en.wikipedia.org/wiki/Cholesky_decomposition#Rank-one_update"
+    n = len(x)
+    for idx in range(n):
+        r = sqrt(C[idx, idx] ** 2 + x[idx] ** 2)
+        c = r / C[idx, idx]
+        s = x[idx] / C[idx, idx]
+        C[idx, idx] = r
+        C[(idx + 1):(n + 1), idx] = (C[(idx + 1):(n + 1), idx] + s*x[(idx + 1):(n + 1)])/c
+        x[(idx + 1):(n + 1)] = c*x[(idx + 1):(n + 1)] - s*C[(idx + 1):(n + 1), idx]
+    return C
+
 class Distribution(object):
     """ Superclass to specify required functions and return messages if they are not yet implemented in subclass.
     """
@@ -35,7 +50,36 @@ class Distribution(object):
         pass
 
 class Gaussian(Distribution):
+    """ Multivariate Gaussian class - subclass of Distribution. 
 
+        Initialise with Gaussian(data, prior). prior specifies a dictionary as defined below, while data is a 2-dimensional numpy array with rows specifying data points.
+
+        Attributes: 
+
+        prior - dictionary specifying Normal-Wishart prior. prior must have the following entries:
+                - 'd' - dimension of Gaussian
+                - 'r' - relative precision 
+                - 'v' - degrees of freedom of Wishart
+                - 'm' - mean vector
+                - 'S' - inverse scale matrix
+        params - dictionary with posterior parameters and specific statistics for Gaussian distribution using the following entries:
+                - 'dimensions' - dimension of Gaussian
+                - 'rel_precision' - relative precision
+                - 'dof' - degrees of freedom
+                - 'member_count' - number of member data points
+                - 'cholesky' - cholesky factorisation of mean precision 
+                - 'member_sum' - sum of member data points
+                - 'init_log_likelihood' - log likelihood of prior
+
+        Methods:
+
+        validate_prior(self, prior) - Validates entries of prior dictionary as defined above
+        add_data(self, data_point) - Assigns a data point to the Gaussian for Gibbs sampling
+        rem_data(self, data_point) - Removes a data point from the Gaussian for Gibbs sampling
+        log_marg(self) - Returns log marginal probability for the Gaussian
+        log_pred(self, data_point) - Computes probability of a given data point belonging with the others in the Gaussian
+        log_like(self) - Computes log likelihood of Gaussian with given data points
+    """
     def __init__(self, data, prior):
         super(Gaussian, self).__init__(data)
         self.prior = prior
@@ -43,6 +87,15 @@ class Gaussian(Distribution):
             print('Prior is suitable.')
         else:
             print('Prior is not suitable.')
+
+        self.params = dict()
+        self.params['dimensions'] = self.prior['d']
+        self.params['rel_precision'] = self.prior['r']
+        self.params['dof'] = self.prior['v']
+        self.params['member_count'] = 0
+        self.params['cholesky'] = np.linalg.cholesky(self.prior['S'] + self.prior['r']*self.prior['m']*self.prior['m'].T)
+        self.params['member_sum'] = self.prior['r']*self.prior['m']
+        self.params['init_log_likelihood'] = self.log_like(self)
 
     def validate_prior(self, prior):
         "Ensures that a dictonary representing a Normal-Wishart prior has been passed."
@@ -76,6 +129,44 @@ class Gaussian(Distribution):
 
         return True
 
-def test(x, y):
-    print('In test fn')
-    return x + y
+    def add_data(self, data_point):
+        "Assigns data_point to this Gaussian and updates significant statistics as required."
+        self.params['member_count'] += 1
+        self.params['rel_variance'] += 1
+        self.params['dof'] += 1
+        self.params['cholesky'] = chol_update(self.params['cholesky'], data_point, '+')
+        self.params['member_sum'] += data_point
+
+    def rem_data(self, data_point):
+        "Removes data_point from this Gaussian and updates significant statistics as required."
+        self.params['member_count'] -= 1
+        self.params['rel_variance'] -= 1
+        self.params['dof'] -= 1
+        self.params['cholesky'] = chol_update(self.params['cholesky'], data_point, '-')
+        self.params['member_sum'] -= data_point
+
+    def log_marg(self):
+        "Computes log marginal for this Gaussian."
+        return self.log_like(self) - self.params['init_log_likelihood']
+
+    def log_pred(self, data_point):
+        "Computes log predictive for this Gaussian and given data point."
+        log_like_tmp = self.log_like()
+        self.add_data(data_point)
+        log_like_new = self.log_like()
+        self.rem_data(data_point)
+        return log_like_new - log_like_tmp
+
+    def log_like(self):
+        "Computes log likelihood for this Gaussian."
+
+        n = self.params['member_count']
+        d = self.params['dimensions']
+        r = self.params['rel_variance']
+        C = self.params['cholesky']
+        X = self.params['member_sum']
+        v = self.params['dof']
+
+        log_likelihood = -n*d/2*np.log(np.pi) - d/2*np.log(r) - v*np.sum(np.log(np.diag(chol_update(C, X/np.sqrt(r), '-'))) + np.sum(scipy.special.gammaln([(v - x)/2. for x in range(0, d)]))
+
+        return log_likelihood
