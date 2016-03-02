@@ -12,6 +12,10 @@ class DPMM(object):
 		data 			- numpy array where rows are data points
 		membership 		- list detailing the membership of each data point in data. if membership[i] = j, then the ith row in data is a member of the jth distribution in clusters
 		cluster_popn	- list specifying the number of datapoints in each cluster
+
+		Methods:
+
+		conditional_prob(self, data_point)	- outputs a numpy array of the relative probabilities that a given data point belongs with the others in each cluster
     """
     def __init__(self, cluster_count, data_count, alpha, clusters, data, membership):
     	self.cluster_count = cluster_count
@@ -28,3 +32,13 @@ class DPMM(object):
     		exit(1)
     	self.membership = np.asarray(membership)
     	self.cluster_popn = np.asarray([np.sum(np.equal(membership, cluster_idx)) for cluster_idx in range(cluster_count)])
+
+    def conditional_prob(self, data_point):
+    	"Outputs a numpy array of the relative probabilities that a given data point belongs with the others in each cluster"
+
+    	p = np.log(self.cluster_popn)
+    	np.append(p, np.log(self.alpha))
+    	for cluster, cluster_id in zip(model.clusters, range(len(model.clusters)):
+    		p[cluster_id] += cluster.log_pred(data_point)
+    	p = np.exp(p)
+    	return p/np.sum(p)
