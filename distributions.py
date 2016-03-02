@@ -1,17 +1,27 @@
 import numpy as np
 import scipy.special
 
-def chol_update(C, x):
-    "Updates Cholesky matrix factorisation as per https://en.wikipedia.org/wiki/Cholesky_decomposition#Rank-one_update"
+def chol_update(C, x, sign = '+'):
+    """Updates Cholesky matrix factorisation as per https://en.wikipedia.org/wiki/Cholesky_decomposition#Rank-one_update. 
+    Note that C must be a numpy array of floats and similarly for the row vector x. 
+    Sign is a string containing + or - depending on if a Cholesky update or downdate is desired."""
+    C_tmp = C.copy()
+    x_tmp = x.copy()
     n = len(x)
     for idx in range(n):
-        r = sqrt(C[idx, idx] ** 2 + x[idx] ** 2)
-        c = r / C[idx, idx]
-        s = x[idx] / C[idx, idx]
-        C[idx, idx] = r
-        C[(idx + 1):(n + 1), idx] = (C[(idx + 1):(n + 1), idx] + s*x[(idx + 1):(n + 1)])/c
-        x[(idx + 1):(n + 1)] = c*x[(idx + 1):(n + 1)] - s*C[(idx + 1):(n + 1), idx]
-    return C
+        if sign == '+':
+            r = np.sqrt(C_tmp[idx, idx] ** 2 + x_tmp[idx] ** 2)
+        else:
+            r = np.sqrt(C_tmp[idx, idx] ** 2 - x_tmp[idx] ** 2)
+        c = r / C_tmp[idx, idx]
+        s = x_tmp[idx] / C_tmp[idx, idx]
+        C_tmp[idx, idx] = r
+        if sign == '+':
+            C_tmp[(idx + 1):(n + 1), idx] = (C_tmp[(idx + 1):(n + 1), idx] + s*x_tmp[(idx + 1):(n + 1)])/c
+        else:
+            C_tmp[(idx + 1):(n + 1), idx] = (C_tmp[(idx + 1):(n + 1), idx] - s*x_tmp[(idx + 1):(n + 1)])/c
+        x_tmp[(idx + 1):(n + 1)] = c*x_tmp[(idx + 1):(n + 1)] - s*C_tmp[(idx + 1):(n + 1), idx]
+    return C_tmp
 
 class Distribution(object):
     """ Superclass to specify required functions and return messages if they are not yet implemented in subclass.
