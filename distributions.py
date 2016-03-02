@@ -44,11 +44,6 @@ class Distribution(object):
         print('Removing data code needs to go here.')
         pass   
 
-    def log_like(self):
-        "Returns log likelihood"
-        print('Log likelihood code needs to go here.')
-        pass
-
 class Gaussian(Distribution):
     """ Multivariate Gaussian class - subclass of Distribution. 
 
@@ -69,7 +64,7 @@ class Gaussian(Distribution):
                 - 'member_count' - number of member data points
                 - 'cholesky' - cholesky factorisation of mean precision 
                 - 'member_sum' - sum of member data points
-                - 'init_log_likelihood' - log likelihood of prior
+                - 'init_norm_constant' - log normalisation constant of prior
 
         Methods:
 
@@ -78,7 +73,7 @@ class Gaussian(Distribution):
         rem_data(self, data_point) - Removes a data point from the Gaussian for Gibbs sampling
         log_marg(self) - Returns log marginal probability for the Gaussian
         log_pred(self, data_point) - Computes probability of a given data point belonging with the others in the Gaussian
-        log_like(self) - Computes log likelihood of Gaussian with given data points
+        norm_constant(self) - Computes logarithm of normalisation constant for Gaussian with given data points
     """
     def __init__(self, data, prior):
         super(Gaussian, self).__init__(data)
@@ -95,7 +90,7 @@ class Gaussian(Distribution):
         self.params['member_count'] = 0
         self.params['cholesky'] = np.linalg.cholesky(self.prior['S'] + self.prior['r']*self.prior['m']*self.prior['m'].T)
         self.params['member_sum'] = self.prior['r']*self.prior['m']
-        self.params['init_log_likelihood'] = self.log_like(self)
+        self.params['init_norm_constant'] = self.norm_constant(self)
 
     def validate_prior(self, prior):
         "Ensures that a dictonary representing a Normal-Wishart prior has been passed."
@@ -147,19 +142,18 @@ class Gaussian(Distribution):
 
     def log_marg(self):
         "Computes log marginal for this Gaussian."
-        return self.log_like(self) - self.params['init_log_likelihood']
+        return self.norm_constant(self) - self.params['init_norm_constant']
 
     def log_pred(self, data_point):
         "Computes log predictive for this Gaussian and given data point."
-        log_like_tmp = self.log_like()
+        log_like_tmp = self.norm_constant()
         self.add_data(data_point)
-        log_like_new = self.log_like()
+        log_like_new = self.norm_constant()
         self.rem_data(data_point)
         return log_like_new - log_like_tmp
 
-    def log_like(self):
+    def norm_constant(self):
         "Computes log likelihood for this Gaussian."
-
         n = self.params['member_count']
         d = self.params['dimensions']
         r = self.params['rel_variance']
@@ -167,6 +161,6 @@ class Gaussian(Distribution):
         X = self.params['member_sum']
         v = self.params['dof']
 
-        log_likelihood = -n*d/2*np.log(np.pi) - d/2*np.log(r) - v*np.sum(np.log(np.diag(chol_update(C, X/np.sqrt(r), '-'))) + np.sum(scipy.special.gammaln([(v - x)/2. for x in range(0, d)]))
+        norm_constant = -n*d/2*np.log(np.pi) - d/2*np.log(r) - v*np.sum(np.log(np.diag(chol_update(C, X/np.sqrt(r), '-')))) + np.sum(scipy.special.gammaln([(v - x)/2. for x in range(0, d)]))
 
-        return log_likelihood
+        return norm_constant
