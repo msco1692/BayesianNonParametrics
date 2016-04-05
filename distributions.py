@@ -5,9 +5,22 @@ def chol_update(C, x, sign = '+'):
     """Updates Cholesky matrix factorisation as per https://en.wikipedia.org/wiki/Cholesky_decomposition#Rank-one_update. 
     Note that C must be a numpy array of floats and similarly for the row vector x. 
     Sign is a string containing + or - depending on if a Cholesky update or downdate is desired."""
-    C_tmp = C.copy()
-    x_tmp = x.copy()
-    n = len(x)
+    C_tmp = np.asarray([C.copy()])
+    x_tmp = np.asarray([x.copy()])
+    #n = len(x)
+    n = 1
+    for idx in range(n):
+        if sign == '+':
+            print C_tmp[idx]
+            r = np.sqrt(C_tmp[idx] ** 2 + x_tmp[idx] ** 2)
+        else:
+            r = np.sqrt(C_tmp[idx] ** 2 - x_tmp[idx] ** 2)
+        c = r / C_tmp[idx]
+        s = x_tmp[idx] / C_tmp[idx]
+        C_tmp[idx] = r
+    return C_tmp
+
+
     for idx in range(n):
         if sign == '+':
             r = np.sqrt(C_tmp[idx, idx] ** 2 + x_tmp[idx] ** 2)
@@ -95,15 +108,21 @@ class Gaussian(Distribution):
 
         self.params = dict()
         self.params['dimensions'] = self.prior['d']
-        self.params['rel_precision'] = self.prior['r']
+        self.params['rel_variance'] = self.prior['r']
         self.params['dof'] = self.prior['v']
         self.params['member_count'] = 0
-        self.params['cholesky'] = np.linalg.cholesky(self.prior['S'] + self.prior['r']*self.prior['m']*self.prior['m'].T)
+        if self.params['dimensions'] == 1:
+            self.params['cholesky'] = self.prior['S'] + self.prior['r']*self.prior['m']*self.prior['m'].T
+        else:
+            self.params['cholesky'] = np.linalg.cholesky(self.prior['S'] + self.prior['r']*self.prior['m']*self.prior['m'].T)
         self.params['member_sum'] = self.prior['r']*self.prior['m']
-        self.params['init_norm_constant'] = self.norm_constant(self)
+        self.params['init_norm_constant'] = self.norm_constant()
 
     def validate_prior(self, prior):
         "Ensures that a dictonary representing a Normal-Wishart prior has been passed."
+
+        return True
+
         if not isinstance(prior, dict):
             print('Provided prior is not a dictionary.')
             return False
@@ -139,7 +158,7 @@ class Gaussian(Distribution):
         self.params['member_count'] += 1
         self.params['rel_variance'] += 1
         self.params['dof'] += 1
-        self.params['cholesky'] = chol_update(self.params['cholesky'], data_point, '+')
+        self.params['cholesky'] = chol_update(self.params['cholesky'], np.asarray(data_point), '+')
         self.params['member_sum'] += data_point
 
     def rem_data(self, data_point):
@@ -147,20 +166,20 @@ class Gaussian(Distribution):
         self.params['member_count'] -= 1
         self.params['rel_variance'] -= 1
         self.params['dof'] -= 1
-        self.params['cholesky'] = chol_update(self.params['cholesky'], data_point, '-')
+        self.params['cholesky'] = chol_update(self.params['cholesky'], np.asarray(data_point), '-')
         self.params['member_sum'] -= data_point
 
     def log_marg(self):
         "Computes log marginal for this Gaussian."
-        return self.norm_constant(self) - self.params['init_norm_constant']
+        return self.norm_constant() - self.params['init_norm_constant']
 
     def log_pred(self, data_point):
         "Computes log predictive for this Gaussian and given data point."
-        log_like_tmp = self.norm_constant()
+        norm_constant_tmp = self.norm_constant()
         self.add_data(data_point)
-        log_like_new = self.norm_constant()
+        norm_constant_new = self.norm_constant()
         self.rem_data(data_point)
-        return log_like_new - log_like_tmp
+        return norm_constant_new - norm_constant_tmp
 
     def norm_constant(self):
         "Computes log likelihood for this Gaussian."
@@ -171,6 +190,6 @@ class Gaussian(Distribution):
         X = self.params['member_sum']
         v = self.params['dof']
 
-        norm_constant = -n*d/2*np.log(np.pi) - d/2*np.log(r) - v*np.sum(np.log(np.diag(chol_update(C, X/np.sqrt(r), '-')))) + np.sum(scipy.special.gammaln([(v - x)/2. for x in range(0, d)]))
+        norm_constant = -n*d/2*np.log(np.pi) - d/2*np.log(r) - v*np.sum(np.log(np.diag(np.asarray(chol_update(C, np.asarray(X/np.sqrt(r)), '-'))))) + np.sum(scipy.special.gammaln([(v - x)/2. for x in range(0, int(d))]))
 
         return norm_constant
