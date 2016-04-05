@@ -1,4 +1,5 @@
 import numpy as np
+from distributions import Gaussian
 
 def CollapsedGibbsSampling(model, num_iterations):
 	"""Performs a specified number of iterations of the Collapsed Gibbs Sampling algorithm using the model specified."""
@@ -6,6 +7,10 @@ def CollapsedGibbsSampling(model, num_iterations):
 	# For each iteration
 	for iter_id in range(num_iterations):
 
+		print model.cluster_count
+		print model.cluster_popn
+		print model.data
+		print model.membership
 		# For each data point in the model
 		for data_id in range(len(model.data)):
 
@@ -23,6 +28,7 @@ def CollapsedGibbsSampling(model, num_iterations):
 				tmp_idx = np.where(model.membership > cluster_id)
 				model.membership[tmp_idx] -= 1
 
+
 			# Generate numpy array of relative probabilities based on prior for membership and current datapoints in each cluster
 			p = np.asarray(model.conditional_prob(data_point))
 
@@ -39,8 +45,9 @@ def CollapsedGibbsSampling(model, num_iterations):
 			# If a new cluster was chosen then create it. For convenience an empty cluster will always be at the end of the list. Thus we only have to create a copy of this cluster for future iterations, without storing the prior.
 			if new_cluster_id == model.cluster_count:
 				model.cluster_count += 1
-				model.clusters.append(model.cluster[-1].copy())
-				np.append(model.cluster_popn, 0)
+				model.clusters.append(Gaussian(np.asarray([]), model.prior))
+				model.cluster_popn.append(0)
+
 
 			# Add data point to its new cluster
 			model.membership[data_id] = new_cluster_id

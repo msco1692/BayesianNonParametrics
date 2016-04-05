@@ -11,14 +11,13 @@ def chol_update(C, x, sign = '+'):
     n = 1
     for idx in range(n):
         if sign == '+':
-            print C_tmp[idx]
             r = np.sqrt(C_tmp[idx] ** 2 + x_tmp[idx] ** 2)
         else:
             r = np.sqrt(C_tmp[idx] ** 2 - x_tmp[idx] ** 2)
         c = r / C_tmp[idx]
         s = x_tmp[idx] / C_tmp[idx]
         C_tmp[idx] = r
-    return C_tmp
+    return C_tmp[0]
 
 
     for idx in range(n):
@@ -101,10 +100,10 @@ class Gaussian(Distribution):
     def __init__(self, data, prior):
         super(Gaussian, self).__init__(data)
         self.prior = prior
-        if self.validate_prior(prior):
-            print('Prior is suitable.')
-        else:
-            print('Prior is not suitable.')
+        # if self.validate_prior(prior):
+        #     # print('Prior is suitable.')
+        # else:
+        #     # print('Prior is not suitable.')
 
         self.params = dict()
         self.params['dimensions'] = self.prior['d']
@@ -189,7 +188,10 @@ class Gaussian(Distribution):
         C = self.params['cholesky']
         X = self.params['member_sum']
         v = self.params['dof']
-
-        norm_constant = -n*d/2*np.log(np.pi) - d/2*np.log(r) - v*np.sum(np.log(np.diag(np.asarray(chol_update(C, np.asarray(X/np.sqrt(r)), '-'))))) + np.sum(scipy.special.gammaln([(v - x)/2. for x in range(0, int(d))]))
+      
+        if d == 1:
+            norm_constant = -n*d/2*np.log(np.pi) - d/2*np.log(r) - v*np.sum(np.log(np.asarray(chol_update(C, np.asarray(X/np.sqrt(r)), '-')))) + np.sum(scipy.special.gammaln([(v - x)/2. for x in range(0, int(d))]))
+        else:  
+            norm_constant = -n*d/2*np.log(np.pi) - d/2*np.log(r) - v*np.sum(np.log(np.diag(np.asarray(chol_update(C, np.asarray(X/np.sqrt(r)), '-'))))) + np.sum(scipy.special.gammaln([(v - x)/2. for x in range(0, int(d))]))
 
         return norm_constant

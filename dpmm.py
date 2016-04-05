@@ -19,7 +19,7 @@ class DPMM(object):
 
         conditional_prob(self, data_point)    - outputs a numpy array of the relative probabilities that a given data point belongs with the others in each cluster
     """
-    def __init__(self, cluster_count, data_count, alpha, clusters, data, membership):
+    def __init__(self, cluster_count, data_count, alpha, clusters, data, membership, prior):
         self.data_count = data_count
         self.alpha = alpha
         # Clusters should include an empty cluster at the end of the list which is ignored in cluster_count
@@ -29,14 +29,13 @@ class DPMM(object):
      #        print "Provided data doesn't conform with claimed data count."
      #        exit(1)
         self.data = data
+        self.prior = prior
 
         if len(membership) != data_count:
             print "Membership array does not have the correct number of elements."
             exit(1)
         self.membership = np.asarray(membership)
-        self.cluster_popn = np.asarray([np.sum(np.equal(membership, cluster_idx)) for cluster_idx in range(cluster_count)])
-
-
+        self.cluster_popn = [np.sum(np.equal(membership, cluster_idx)) for cluster_idx in range(cluster_count)]
 
     def conditional_prob(self, data_point):
         "Outputs a numpy array of the relative probabilities that a given data point belongs with the others in each cluster"
