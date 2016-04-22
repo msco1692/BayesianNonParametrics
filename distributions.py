@@ -1,5 +1,6 @@
 import numpy as np
 import scipy.special
+import scipy.stats
 
 def chol_update(C, x, sign = '+'):
     """Updates Cholesky matrix factorisation as per https://en.wikipedia.org/wiki/Cholesky_decomposition#Rank-one_update. 
@@ -116,6 +117,20 @@ class Gaussian(Distribution):
             self.params['cholesky'] = np.linalg.cholesky(self.prior['S'] + self.prior['r']*self.prior['m']*self.prior['m'].T)
         self.params['member_sum'] = self.prior['r']*self.prior['m']
         self.params['init_norm_constant'] = self.norm_constant()
+
+    def draw_from_posterior(self):
+        
+        C = chol_update(self.params['cholesky'], self.params['member_sum']/np.sqrt(self.params['rel_variance']), sign = '-')
+
+        if self.params['dimensions'] == 1:
+            sigma = scipy.stats.invwishart.rvs(df = self.params['dof'], scale = self.params['cholesky'])
+        else:
+            sigma = scipy.stats.invwishart.rvs(df = self.params['dof'], scale = np.dot(self.params['cholesky'], self.params['cholesky'].T))
+
+        m = scipy.stats.norm.rvs(self.params['member_sum']/self.params['rel_variance'], sigma/self.params['rel_variance'])
+
+        return(m, sigma)
+
 
     def validate_prior(self, prior):
         "Ensures that a dictonary representing a Normal-Wishart prior has been passed."
